@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Markerless AR</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="start">Start</string>
+    <string name="uruchom_z_debugiem">Uruchom z debugiem</string>
+    <string name="opcje_debugowania">Opcje debugowania</string>
+    <string name="wyj_cie">Wyjście</string>
+    <string name="handdetector">HandDetector</string>
+    <string name="zapisz">Zapisz</string>
+</resources>

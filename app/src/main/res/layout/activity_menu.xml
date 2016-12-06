@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_menu"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="pl.cba.piterpti.opencvhand.MenuActivity"
+    android:background="#000">
+
+    <TextView
+        android:text="@string/handdetector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textSize="36sp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp"
+        android:textColor="#fff"
+        android:gravity="center"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:layout_weight="1"
+        android:padding="10dp">
+        <Button
+            android:id="@+id/startBtn"
+            android:text="@string/start"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="0.25"
+            android:background="#555"
+            android:textColor="#fff"
+            android:textAlignment="center"/>
+
+        <Button
+            android:id="@+id/startDbgBtn"
+            android:text="@string/uruchom_z_debugiem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="0.25"
+            android:background="#555"
+            android:textColor="#fff"
+            android:textAlignment="center"/>
+
+        <Button
+            android:id="@+id/debugOptionsBtn"
+            android:text="@string/opcje_debugowania"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="0.25"
+            android:background="#555"
+            android:textColor="#fff"
+            android:textAlignment="center"/>
+
+        <Button
+            android:id="@+id/exitBtn"
+            android:text="@string/wyj_cie"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:layout_marginBottom="10dp"
+            android:layout_weight="0.25"
+            android:background="#555"
+            android:textColor="#fff"
+            android:textAlignment="center"/>
+
+    </LinearLayout>
+
+</LinearLayout>
