@@ -1,5 +1,9 @@
 package pl.piterpti.cba.pl;
 
+/**
+ * Created by Piter on 23/10/2016.
+ */
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
