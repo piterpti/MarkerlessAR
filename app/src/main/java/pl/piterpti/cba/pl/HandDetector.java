@@ -16,8 +16,12 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfInt;
+import org.opencv.core.MatOfInt4;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
@@ -56,6 +60,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private Mat mThresheld;
     private Mat kernel;
     private Mat hierarchy;
+    private Mat hand;
 
     private File mCascadeFile;
     private CascadeClassifier mJavaDetector;
@@ -73,6 +78,13 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private Scalar mBlobColorHsv;
 
     private ColorDetector colorDetector;
+
+    private Rect handSuspect;
+    private ArrayList<Point> fingerTips = new ArrayList<>();
+    private Point cogPt;
+
+    private static final double START_OBJ_SIZE = 1;
+    private double cubeSize = 0;
 
     public HandDetector() {}
 
@@ -115,6 +127,11 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         mThresheld = new Mat();
         kernel = new Mat();
         hierarchy = new Mat();
+        hand = new Mat();
+
+        approxStorage = new MatOfPoint2f();
+        hullStorage = new MatOfInt();
+        defectsStorage = new MatOfInt4();
 
         resWidth = width;
         resHeight = height;
@@ -217,63 +234,44 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             mJavaDetector.detectMultiScale(mGray, handSuspects, 1.1, 2, 2, new Size(minHandWidth, minHandHeight), new Size());
         }
 
-        Rect[] hands = Toolkit.getBiggestRects(handSuspects.toArray(), 2);
+        handSuspect = Toolkit.findBiggestRect(handSuspects.toArray());
 
-        for (Rect hand : hands) {
+        if (handSuspect != null) {
 
-            Core.rectangle(mRgba, hand.tl(), hand.br(), CONTOUR_COLOR_RED, 3);
+            Imgproc.cvtColor(mRgba, mThresheld, Imgproc.COLOR_RGB2HSV_FULL);
+            getHsvOfPoint(Toolkit.getRectCenter(handSuspect));
 
-            Rect bigger = Toolkit.makeRectsSomeBigger(hand, 80, 80, resWidth, resHeight);
+            mThresheld = mThresheld.submat(handSuspect);
 
-            Core.rectangle(mRgba, bigger.tl(), bigger.br(), CONTOUR_COLOR_GREEN, 3);
+            Core.rectangle(mRgba, handSuspect.tl(), handSuspect.br(), CONTOUR_COLOR_GREEN, 3);
 
-            getHsvOfPoint(hand);
-            Mat handSuspect = mRgba.submat(hand);
-
-            Core.inRange(handSuspect, colorDetector.getlowerBound(), colorDetector.getUpperBound(), mThresheld);
+            Core.inRange(mThresheld, colorDetector.getlowerBound(), colorDetector.getUpperBound(), mThresheld);
             Imgproc.morphologyEx(mThresheld, mThresheld, Imgproc.MORPH_OPEN, kernel);
             Imgproc.dilate(mThresheld, mThresheld, new Mat());
-
             MatOfPoint biggestContour = findBiggestContour(mThresheld);
 
-            if (biggestContour == null) {
-                continue;
+            if (biggestContour != null) {
+
+                findFingerTips(biggestContour);
+
+                for (Point p : fingerTips) {
+                    Core.circle(mRgba, new Point(p.x + handSuspect.tl().x, p.y + handSuspect.tl().y), 3, CONTOUR_COLOR_BLUE, 3);
+                }
             }
-
-
         }
 
-
-
-
-
-//        Point cogPt = Toolkit.getRectCenter(hand);
-//
-//        if (hand != null && cogPt != null) {
-//            Core.circle(mRgba, cogPt, 3, CONTOUR_COLOR_GREEN, 3);
-//            myGLRenderer.setPos(cogPt.x, cogPt.y);
-//            myGLRenderer.setRenderCube(true);
-//        } else {
-//            myGLRenderer.setRenderCube(false);
-//        }
-//
-////            myGLRenderer.rotateToZ(-angle);
-//        myGLRenderer.rotateToX(-mySensorListener.getX() * 10);
-//        myGLRenderer.rotateToY(-mySensorListener.getY() * 5);
-
-
+        myGLRenderer.setRenderCube(false);
         return mRgba;
     }
 
-    private void getHsvOfPoint(Rect rect) {
 
-        Mat foundRegion = mRgba.submat(rect);
-        Mat touchedRegionHsv = new Mat();
-        Imgproc.cvtColor(foundRegion, touchedRegionHsv, Imgproc.COLOR_RGB2HSV_FULL);
+    private void getHsvOfPoint(Point rect) {
+
+        cogPt = new Point(rect.x, rect.y + 50);
+        Rect r = new Rect((int)rect.x - 5,(int) rect.y + 45, 10, 10);
+        Mat touchedRegionHsv = mThresheld.submat(r);
         mBlobColorHsv = Core.sumElems(touchedRegionHsv);
-
-        double a = mBlobColorHsv.val[0];
-        int pointCount = rect.width * rect.height;
+        int pointCount = r.width * r.height;
         for (int i = 0; i < mBlobColorHsv.val.length; i++) {
             mBlobColorHsv.val[i] /= pointCount;
         }
@@ -305,6 +303,83 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         }
 
         return biggestContour;
+    }
+
+    private MatOfPoint2f approxStorage;
+    private MatOfInt hullStorage;
+    private MatOfInt4 defectsStorage;
+
+    private void findFingerTips(MatOfPoint contour) {
+
+        Imgproc.approxPolyDP(new MatOfPoint2f(contour.toArray()), approxStorage, 12, false);
+        approxStorage.convertTo(contour, CvType.CV_32S);
+        Imgproc.convexHull(contour, hullStorage, true);
+
+        try {
+            Imgproc.convexityDefects(contour, hullStorage, defectsStorage);
+        } catch (Exception e) {
+            Log.d("Exception!!", e.toString());
+        }
+
+        drawContour(contour);
+        findFingers(contour);
+    }
+
+    private void drawContour(MatOfPoint contour) {
+        ArrayList<MatOfPoint> con = new ArrayList<>();
+        con.add(contour);
+        Imgproc.drawContours(mRgba, con, 0, CONTOUR_COLOR_RED, 5, 8, new Mat(), Integer.MAX_VALUE, handSuspect.tl());
+
+    }
+
+    private void findFingers(MatOfPoint contour) {
+
+        fingerTips.clear();
+
+        try {
+            for (int i = 0; i < defectsStorage.toList().size(); i = i + 4) {
+
+                Point start = contour.toList().get(defectsStorage.toList().get(i));
+                Point end = contour.toList().get(defectsStorage.toList().get(i + 1));
+                Point depth = contour.toList().get(defectsStorage.toList().get(i + 2));
+
+                double angle = Math.atan2(cogPt.y - start.y, cogPt.x - start.x);
+                double inAngle = Toolkit.angleBetween(start, end, depth, false);
+                double length = Toolkit.distanceBetweenPoints(start, depth);
+
+                if (angle > -30 && angle < 160 && Math.abs(inAngle) > 20 && Math.abs(inAngle) < 120 && length > 0.1 * handSuspect.height) {
+                    if (start.y < cogPt.y) {
+                        fingerTips.add(start);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.d("Exception", e.toString());
+        }
+    }
+
+    private void getDirection() {
+
+        Point avgFing = Toolkit.avgFromPoint(fingerTips);
+
+        Point aboveCogPt = new Point(avgFing.x, cogPt.y);
+
+        int angle = Toolkit.angleBetween(cogPt, aboveCogPt, avgFing, true);
+
+        angle -= 10;
+
+        myGLRenderer.rotateToZ(-angle);
+        myGLRenderer.rotateToY(-mySensorListener.getY() * 10);
+        myGLRenderer.rotateToX(-mySensorListener.getX() * 5);
+
+        double tempDis;
+        cubeSize = 0;
+        for (Point p : fingerTips) {
+            tempDis = Toolkit.distanceBetweenPoints(cogPt, p);
+            if (tempDis > cubeSize) {
+                cubeSize = tempDis;
+            }
+        }
     }
 
 

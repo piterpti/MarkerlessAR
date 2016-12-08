@@ -10,7 +10,7 @@ public class Toolkit {
 
     public static Rect findBiggestRect(Rect[] rects) {
         int maxArea = 0;
-        int tmpArea = 0;
+        int tmpArea;
         Rect biggestRect = null;
 
         for (Rect rect : rects) {
@@ -71,13 +71,48 @@ public class Toolkit {
         int widthAfter = width + widthPlus;
 
         if (xAfter + widthAfter >= resWidht) {
-            widthAfter = resHeight - 1;
+            widthAfter = resWidht - 1;
         }
 
+        int yAfter = y - heightPlus / 2;
+        if (yAfter < 1) {
+            yAfter = 1;
+        } else {
+            yAfter = y - heightPlus / 2;
+        }
 
-        Rect result = new Rect(xAfter, y, widthAfter, height);
+        int heightAfter = height + heightPlus;
+
+        if (yAfter + heightAfter >= resHeight) {
+            heightAfter = resHeight;
+        }
+
+        Rect result = new Rect(xAfter, yAfter, widthAfter, heightAfter);
 
 
         return result;
     }
+
+    public static int angleBetween(Point tip, Point next, Point prev, boolean negativeVal) {
+        int angle = ((int)Math.round(
+                Math.toDegrees(
+                        Math.atan2(next.x - tip.x, next.y - tip.y) -
+                                Math.atan2(prev.x - tip.x, prev.y - tip.y)) ));
+
+        if (! negativeVal) {
+            angle = Math.abs(angle);
+        }
+
+        return angle;
+    }
+
+    public static double distanceBetweenPoints(Point p1, Point p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+    public static Point avgFromPoints(Point p1, Point p2) {
+        return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) /2);
+    }
+
+
 }
