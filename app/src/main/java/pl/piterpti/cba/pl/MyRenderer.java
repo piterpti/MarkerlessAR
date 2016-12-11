@@ -16,11 +16,13 @@ public class MyRenderer extends RajawaliRenderer{
 
     private Object3D currentObj;
 
+    private Object3D[] objects;
+
     private double rotationX = 0f;
     private double rotationY = 0f;
     private double rotationZ = 0f;
 
-    private ObjData objData;
+    private int currentModel = 0;
 
     public void onTouchEvent(MotionEvent event){
     }
@@ -36,13 +38,6 @@ public class MyRenderer extends RajawaliRenderer{
         setFrameRate(10);
     }
 
-    public MyRenderer(Context context, ObjData data) {
-        super(context);
-        this.context = context;
-        setFrameRate(10);
-        this.objData = data;
-    }
-
     public void initScene(){
 
         directionalLight = new DirectionalLight(1f, .2f, -1.0f);
@@ -50,9 +45,20 @@ public class MyRenderer extends RajawaliRenderer{
         directionalLight.setPower(2);
         getCurrentScene().addLight(directionalLight);
 
+        objects = new Object3D[3];
 
-        Obj3D obj3D= new Obj3D(mContext, mTextureManager, objData.getRawVal(), objData.getDrawableVal());
-        currentObj = obj3D.getObject3D();
+
+
+        Obj3D obj3D= new Obj3D(mContext, mTextureManager, R.raw.camaro_obj, R.drawable.camaro);
+        objects[0] = obj3D.getObject3D();
+
+        obj3D= new Obj3D(mContext, mTextureManager, R.raw.cube_obj, R.drawable.camaro);
+        objects[1] = obj3D.getObject3D();
+
+        obj3D= new Obj3D(mContext, mTextureManager, R.raw.superman_obj, R.drawable.superman);
+        objects[2] = obj3D.getObject3D();
+
+        currentObj = objects[currentModel];
 
         currentObj.setPosition(0, 0, 0);
         currentObj.setScale(0.3, 0.3, 0.3);
@@ -67,9 +73,7 @@ public class MyRenderer extends RajawaliRenderer{
     public void onRender(final long elapsedTime, final double deltaTime) {
         super.onRender(elapsedTime, deltaTime);
         if (currentObj != null) {
-            currentObj.setRotation(rotationX + objData.getStartRotX(),
-                    rotationY + objData.getStartRotY(),
-                    rotationZ + objData.getStartRotZ());
+            currentObj.setRotation(rotationX, rotationY, rotationZ);
         }
     }
 
@@ -97,21 +101,18 @@ public class MyRenderer extends RajawaliRenderer{
         }
     }
 
-    public void setObj(ObjData data) {
-        this.objData = data;
-        getCurrentScene().removeChild(currentObj);
-        currentObj.destroy();
-        currentObj = null;
-        Obj3D obj3D= new Obj3D(mContext, mTextureManager, data.getRawVal(), data.getDrawableVal());
-        currentObj = obj3D.getObject3D();
+    public void nextObj() {
+        currentModel++;
+        if (currentModel >= objects.length) {
+            currentModel = 0;
+            getCurrentScene().removeChild(objects[objects.length - 1]);
+        } else {
+            getCurrentScene().removeChild(objects[currentModel - 1]);
+        }
 
+        currentObj = objects[currentModel];
         currentObj.setPosition(0, 0, 0);
         currentObj.setScale(0.3, 0.3, 0.3);
-
-
         getCurrentScene().addChild(currentObj);
-
-        getCurrentCamera().setZ(4.2);
-
     }
 }

@@ -45,8 +45,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private static final String MAIN_LOG_TAG = "Main::LOG";
 
-    private ArrayList<ObjData> objData = new ArrayList<>();
-
     private static final Scalar CONTOUR_COLOR_GREEN = new Scalar(0, 255, 0, 255);
     private static final Scalar CONTOUR_COLOR_RED = new Scalar(255, 0, 0, 255);
     private static final Scalar CONTOUR_COLOR_BLUE = new Scalar(0, 0, 255, 255);
@@ -64,7 +62,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private Mat mThresheld;
     private Mat kernel;
     private Mat hierarchy;
-    private Mat hand;
 
     private File mCascadeFile;
     private CascadeClassifier mJavaDetector;
@@ -89,8 +86,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private MyRenderer renderer;
 
-    private int currnetModel = 0;
-
     public HandDetector() {}
 
     @Override
@@ -108,9 +103,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         surface.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         surface.getHolder().setFormat(PixelFormat.TRANSLUCENT);
 
-        loadModels();
-
-        renderer = new MyRenderer(this, objData.get(currnetModel));
+        renderer = new MyRenderer(this);
         surface.setSurfaceRenderer(renderer);
 
         addContentView(surface, new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT));
@@ -129,22 +122,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         colorDetector = new ColorDetector();
     }
 
-    private void loadModels() {
-
-        // CAMARO
-        ObjData data = new ObjData(R.raw.camaro_obj, R.drawable.camaro);
-        objData.add(data);
-
-        // CUBE
-        data = new ObjData(R.raw.cube_obj, R.drawable.camaro);
-        objData.add(data);
-
-        // SUPERHERO
-        data = new ObjData(R.raw.superman_obj, R.drawable.superman);
-        data.setStartRotZ(-120);
-        objData.add(data);
-    }
-
     @Override
     public void onCameraViewStarted(int width, int height) {
         mGray = new Mat();
@@ -152,7 +129,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         mThresheld = new Mat();
         kernel = new Mat();
         hierarchy = new Mat();
-        hand = new Mat();
 
         approxStorage = new MatOfPoint2f();
         hullStorage = new MatOfInt();
@@ -417,11 +393,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         Log.d("BLABLA", "Angle: " + angle);
 
         if (fingerTips.size() >= 3 && angle >= 30 && angle < 60) {
-            currnetModel++;
-            if (currnetModel >= objData.size()) {
-                currnetModel = 0;
-            }
-            renderer.setObj(objData.get(currnetModel));
+            renderer.nextObj();
         }
 
         renderer.rotateToY(mySensorListener.getY() * 10);
