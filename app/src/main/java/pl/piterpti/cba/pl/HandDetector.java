@@ -5,7 +5,6 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
@@ -16,7 +15,6 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
-import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
@@ -30,7 +28,6 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
-import org.rajawali3d.surface.IRajawaliSurface;
 import org.rajawali3d.surface.RajawaliSurfaceView;
 
 import java.io.File;
@@ -47,6 +44,8 @@ import java.util.*;
 public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private static final String MAIN_LOG_TAG = "Main::LOG";
+
+    private ArrayList<ObjData> objData = new ArrayList<>();
 
     private static final Scalar CONTOUR_COLOR_GREEN = new Scalar(0, 255, 0, 255);
     private static final Scalar CONTOUR_COLOR_RED = new Scalar(255, 0, 0, 255);
@@ -90,6 +89,8 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private MyRenderer renderer;
 
+    private int currnetModel = 0;
+
     public HandDetector() {}
 
     @Override
@@ -107,7 +108,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         surface.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         surface.getHolder().setFormat(PixelFormat.TRANSLUCENT);
 
-        renderer = new MyRenderer(this);
+        loadModels();
+
+        renderer = new MyRenderer(this, objData.get(currnetModel));
         surface.setSurfaceRenderer(renderer);
 
         addContentView(surface, new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT));
@@ -124,8 +127,22 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         sensorManager.registerListener(mySensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
         colorDetector = new ColorDetector();
+    }
 
+    private void loadModels() {
 
+        // CAMARO
+        ObjData data = new ObjData(R.raw.camaro_obj, R.drawable.camaro);
+        objData.add(data);
+
+        // CUBE
+        data = new ObjData(R.raw.cube_obj, R.drawable.camaro);
+        objData.add(data);
+
+        // SUPERHERO
+        data = new ObjData(R.raw.superman_obj, R.drawable.superman);
+        data.setStartRotZ(-120);
+        objData.add(data);
     }
 
     @Override
@@ -267,7 +284,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                 }
 
                 getDirection();
-//                myGLRenderer.setRenderCube(true);
 
                 if (fingerTips.size() >= 2) {
                     frameDetects = frameDetects > 4 ? frameDetects : frameDetects + 1;
@@ -276,17 +292,16 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                 }
 
                 if (frameDetects >= 3) {
-//                    renderer.setRenderCube(true);
+                    renderer.setRendering(true);
                 } else {
-//                    myGLRenderer.setRenderCube(false);
+                    renderer.setRendering(false);
                 }
 
             }
         } else {
-//            myGLRenderer.setRenderCube(false);
+            renderer.setRendering(false);
         }
 
-//        myGLRenderer.setRenderCube(false);
         return mRgba;
     }
 
@@ -393,18 +408,21 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         Point avgFing = Toolkit.avgFromPoint(fingerTips);
         avgFing = new Point(avgFing.x + handSuspect.tl().x, avgFing.y + handSuspect.tl().y);
 
-//        Core.circle(mRgba, avgFing, 3, CONTOUR_COLOR_YELLOW, 3);
-
         Point aboveCogPt = new Point(cogPt.x, avgFing.y);
-
-//        Core.circle(mRgba, aboveCogPt, 3, CONTOUR_COLOR_RED, 3);
-
 
         int angle = Toolkit.angleBetween(cogPt, aboveCogPt, avgFing, true);
 
         angle -= 10;
 
         Log.d("BLABLA", "Angle: " + angle);
+
+        if (fingerTips.size() >= 3 && angle >= 30 && angle < 60) {
+            currnetModel++;
+            if (currnetModel >= objData.size()) {
+                currnetModel = 0;
+            }
+            renderer.setObj(objData.get(currnetModel));
+        }
 
         renderer.rotateToY(mySensorListener.getY() * 10);
         renderer.rotateToZ(mySensorListener.getX() * 10);
@@ -418,8 +436,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
         if (fingerTips.size() > 2) {
 //            cubeSize = Toolkit.distanceBetweenPoints(cogPt, avgFing);
-//            myGLRenderer.setCubeSize(START_OBJ_SIZE);
-//            myGLRenderer.setCubeSize(cubeSize / 150);
+
         }
     }
 

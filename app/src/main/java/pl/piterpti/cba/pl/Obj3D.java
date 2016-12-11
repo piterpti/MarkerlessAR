@@ -27,17 +27,18 @@ public class Obj3D {
             parser.parse();
             object3D = parser.getParsedObject();
 
-            Material material = new Material();
-            material.enableLighting(true);
-            material.setDiffuseMethod(new DiffuseMethod.Lambert());
-            material.setColor(0);
+            if (texRaw != -1) {
+                Material material = new Material();
+                material.enableLighting(true);
+                material.setDiffuseMethod(new DiffuseMethod.Lambert());
+                material.setColor(0);
 
-            Texture tex = new Texture("name", texRaw);
+                Texture tex = new Texture("name", texRaw);
 
-            material.addTexture(tex);
+                material.addTexture(textureManager.addTexture(tex));
 
-            object3D.setMaterial(material);
-
+                object3D.setMaterial(material);
+            }
 
         } catch (ParsingException e) {
             Log.w("Excetpion", "Parsing exception: " + e.toString());
