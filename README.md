@@ -1,4 +1,4 @@
-# OPENCV FaceDetection
+# OPENCV HandDetection, tracking and rendering 3D object on it
 Detection based tracker module talks through JNI to the native libraries of OPENCV
-Set up Android Studio 2.0 Preview 2
-For any questions email me at eduardo.www@gmail.com
+
+For any questions email me at piterpti@gmail.com
