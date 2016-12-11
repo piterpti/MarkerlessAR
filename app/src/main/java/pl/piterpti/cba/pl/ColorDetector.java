@@ -12,7 +12,7 @@ public class ColorDetector {
     private Scalar mUpperBound = new Scalar(0);
 
     // Color radius for range checking in HSV color space
-    private Scalar mColorRadius = new Scalar(35, 70, 90, 0);
+    private Scalar mColorRadius = new Scalar(50, 70, 90, 0);
 
     public Scalar getlowerBound() {
         return mLowerBound;

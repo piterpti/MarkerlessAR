@@ -3,6 +3,8 @@ package pl.piterpti.cba.pl;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 
+import java.util.*;
+
 /**
  * Created by Piter on 07/12/2016.
  */
@@ -110,8 +112,19 @@ public class Toolkit {
         return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     }
 
-    public static Point avgFromPoints(Point p1, Point p2) {
-        return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) /2);
+    public static Point avgFromPoint(ArrayList<Point> points) {
+
+        double x = 0;
+        double y = 0;
+        for (Point p : points) {
+            x += p.x;
+            y += p.y;
+        }
+
+        x /= points.size();
+        y /= points.size();
+
+        return new Point(x, y);
     }
 
 

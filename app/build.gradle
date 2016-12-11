@@ -62,4 +62,5 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:22.0.0'
     compile project(':opencv')
+    compile 'org.rajawali3d:rajawali:1.0.186-SNAPSHOT@aar'
 }

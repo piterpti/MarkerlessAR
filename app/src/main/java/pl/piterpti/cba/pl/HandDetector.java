@@ -16,6 +16,7 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
+import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
@@ -29,6 +30,8 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.rajawali3d.surface.IRajawaliSurface;
+import org.rajawali3d.surface.RajawaliSurfaceView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.util.*;
+
 
 /**
  * Created by Piter on 06/12/2016.
@@ -47,6 +51,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private static final Scalar CONTOUR_COLOR_GREEN = new Scalar(0, 255, 0, 255);
     private static final Scalar CONTOUR_COLOR_RED = new Scalar(255, 0, 0, 255);
     private static final Scalar CONTOUR_COLOR_BLUE = new Scalar(0, 0, 255, 255);
+    private static final Scalar CONTOUR_COLOR_YELLOW = new Scalar(255, 255, 0, 255);
 
     /**
      * accelerometer data
@@ -70,8 +75,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private CameraBridgeViewBase mOpenCvCameraView;
 
-    private GLRenderer myGLRenderer;
-
     private int resWidth = 0;
     private int resHeight = 0;
 
@@ -83,8 +86,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private ArrayList<Point> fingerTips = new ArrayList<>();
     private Point cogPt;
 
-    private static final double START_OBJ_SIZE = 1;
-    private double cubeSize = 0;
+    int frameDetects = 0;
+
+    private MyRenderer renderer;
 
     public HandDetector() {}
 
@@ -99,14 +103,17 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         mOpenCvCameraView.setCvCameraViewListener(this);
 
         // OpenGL settings
-        GLSurfaceView myGLView = new GLSurfaceView(this);
-        myGLView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
-        myGLView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        final RajawaliSurfaceView surface = new RajawaliSurfaceView(this);
+        surface.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
+        surface.getHolder().setFormat(PixelFormat.TRANSLUCENT);
 
-        myGLRenderer = new GLRenderer();
-        myGLView.setRenderer(myGLRenderer);
-        addContentView(myGLView, new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT));
-        myGLView.setZOrderMediaOverlay(true);
+        renderer = new MyRenderer(this);
+        surface.setSurfaceRenderer(renderer);
+
+        addContentView(surface, new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT));
+
+        surface.setZOrderMediaOverlay(true);
+        surface.setFrameRate(10.0);
 
         // Accelerometer settings
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -117,8 +124,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         sensorManager.registerListener(mySensorListener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
         colorDetector = new ColorDetector();
-    }
 
+
+    }
 
     @Override
     public void onCameraViewStarted(int width, int height) {
@@ -136,8 +144,8 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         resWidth = width;
         resHeight = height;
 
-        myGLRenderer.setVidDim(width, height);
-        myGLRenderer.setRenderCube(true);
+        renderer.setOverrideViewportDimensions(width, height);
+        renderer.setViewPort(width, height);
     }
 
     @Override
@@ -231,8 +239,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         MatOfRect handSuspects = new MatOfRect();
 
         if (mJavaDetector != null) {
-            mJavaDetector.detectMultiScale(mGray, handSuspects, 1.1, 2, 2, new Size(minHandWidth, minHandHeight), new Size());
+            mJavaDetector.detectMultiScale(mGray, handSuspects, 1.1, 3, 2, new Size(minHandWidth, minHandHeight), new Size());
         }
+
 
         handSuspect = Toolkit.findBiggestRect(handSuspects.toArray());
 
@@ -242,7 +251,6 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             getHsvOfPoint(Toolkit.getRectCenter(handSuspect));
 
             mThresheld = mThresheld.submat(handSuspect);
-
             Core.rectangle(mRgba, handSuspect.tl(), handSuspect.br(), CONTOUR_COLOR_GREEN, 3);
 
             Core.inRange(mThresheld, colorDetector.getlowerBound(), colorDetector.getUpperBound(), mThresheld);
@@ -257,10 +265,28 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                 for (Point p : fingerTips) {
                     Core.circle(mRgba, new Point(p.x + handSuspect.tl().x, p.y + handSuspect.tl().y), 3, CONTOUR_COLOR_BLUE, 3);
                 }
+
+                getDirection();
+//                myGLRenderer.setRenderCube(true);
+
+                if (fingerTips.size() >= 2) {
+                    frameDetects = frameDetects > 4 ? frameDetects : frameDetects + 1;
+                } else {
+                    frameDetects = frameDetects < 1 ? 0 : frameDetects- 1;
+                }
+
+                if (frameDetects >= 3) {
+//                    renderer.setRenderCube(true);
+                } else {
+//                    myGLRenderer.setRenderCube(false);
+                }
+
             }
+        } else {
+//            myGLRenderer.setRenderCube(false);
         }
 
-        myGLRenderer.setRenderCube(false);
+//        myGLRenderer.setRenderCube(false);
         return mRgba;
     }
 
@@ -268,14 +294,18 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private void getHsvOfPoint(Point rect) {
 
         cogPt = new Point(rect.x, rect.y + 50);
-        Rect r = new Rect((int)rect.x - 5,(int) rect.y + 45, 10, 10);
-        Mat touchedRegionHsv = mThresheld.submat(r);
-        mBlobColorHsv = Core.sumElems(touchedRegionHsv);
-        int pointCount = r.width * r.height;
-        for (int i = 0; i < mBlobColorHsv.val.length; i++) {
-            mBlobColorHsv.val[i] /= pointCount;
+        Rect r = new Rect((int)rect.x - 5,(int) rect.y + 45, 40, 40);
+        try {
+            Mat touchedRegionHsv = mThresheld.submat(r);
+            mBlobColorHsv = Core.sumElems(touchedRegionHsv);
+            int pointCount = r.width * r.height;
+            for (int i = 0; i < mBlobColorHsv.val.length; i++) {
+                mBlobColorHsv.val[i] /= pointCount;
+            }
+            colorDetector.setHsvColor(mBlobColorHsv);
+        } catch (Exception e) {
+            Log.d("Exception", e.toString());
         }
-        colorDetector.setHsvColor(mBlobColorHsv);
     }
 
     private MatOfPoint findBiggestContour(Mat img) {
@@ -285,7 +315,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         Mat cp = img.clone();
         Imgproc.findContours(cp, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
 
-        double maxArea = 30;
+        double maxArea = 20000;
 
         if (contours != null) {
 
@@ -361,25 +391,51 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private void getDirection() {
 
         Point avgFing = Toolkit.avgFromPoint(fingerTips);
+        avgFing = new Point(avgFing.x + handSuspect.tl().x, avgFing.y + handSuspect.tl().y);
 
-        Point aboveCogPt = new Point(avgFing.x, cogPt.y);
+//        Core.circle(mRgba, avgFing, 3, CONTOUR_COLOR_YELLOW, 3);
+
+        Point aboveCogPt = new Point(cogPt.x, avgFing.y);
+
+//        Core.circle(mRgba, aboveCogPt, 3, CONTOUR_COLOR_RED, 3);
+
 
         int angle = Toolkit.angleBetween(cogPt, aboveCogPt, avgFing, true);
 
         angle -= 10;
 
-        myGLRenderer.rotateToZ(-angle);
-        myGLRenderer.rotateToY(-mySensorListener.getY() * 10);
-        myGLRenderer.rotateToX(-mySensorListener.getX() * 5);
+        Log.d("BLABLA", "Angle: " + angle);
 
-        double tempDis;
-        cubeSize = 0;
-        for (Point p : fingerTips) {
-            tempDis = Toolkit.distanceBetweenPoints(cogPt, p);
-            if (tempDis > cubeSize) {
-                cubeSize = tempDis;
-            }
+        renderer.rotateToY(mySensorListener.getY() * 10);
+        renderer.rotateToZ(mySensorListener.getX() * 10);
+        renderer.rotateToX(angle);
+
+//        renderer.setPos(cogPt.x / 2, cogPt.y / 2);
+        setPosition(cogPt.x ,cogPt.y);
+
+        Core.circle(mRgba, cogPt, 3, CONTOUR_COLOR_GREEN, 3);
+
+
+        if (fingerTips.size() > 2) {
+//            cubeSize = Toolkit.distanceBetweenPoints(cogPt, avgFing);
+//            myGLRenderer.setCubeSize(START_OBJ_SIZE);
+//            myGLRenderer.setCubeSize(cubeSize / 150);
         }
+    }
+
+    private void setPosition(double x, double y) {
+        double cD = renderer.getCurrentCamera().getZ();
+
+        float yVP = renderer.getViewportHeight();
+        float xVP = renderer.getViewportWidth();
+
+        double sx = 1.15;
+        double sy = 1.3;
+
+        double obx = (x - xVP / 2) * (cD / sx / xVP);
+        double oby = (yVP / 2 - y) * (cD / sy / yVP);
+
+        renderer.setPos(obx, oby);
     }
 
 

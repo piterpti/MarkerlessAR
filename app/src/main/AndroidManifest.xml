@@ -4,7 +4,9 @@
     package="pl.piterpti.cba.pl"
     android:installLocation="preferExternal">
     <uses-sdk android:targetSdkVersion="19" android:minSdkVersion="2"
-        tools:overrideLibrary="org.opencv"/>
+        tools:overrideLibrary="org.opencv,org.rajawali3d "/>
+
+
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature
