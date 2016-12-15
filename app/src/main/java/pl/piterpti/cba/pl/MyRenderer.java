@@ -1,10 +1,17 @@
 package pl.piterpti.cba.pl;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import org.rajawali3d.Object3D;
 import org.rajawali3d.lights.DirectionalLight;
+import org.rajawali3d.loader.LoaderOBJ;
+import org.rajawali3d.loader.ParsingException;
+import org.rajawali3d.materials.Material;
+import org.rajawali3d.materials.methods.DiffuseMethod;
+import org.rajawali3d.materials.textures.ATexture;
+import org.rajawali3d.materials.textures.Texture;
 import org.rajawali3d.renderer.RajawaliRenderer;
 
 /**
@@ -45,24 +52,23 @@ public class MyRenderer extends RajawaliRenderer{
         directionalLight.setPower(2);
         getCurrentScene().addLight(directionalLight);
 
-        objects = new Object3D[3];
+        objects = new Object3D[1];
 
+//        Object3D object3D = loadModel(R.raw.camaro_obj, R.drawable.camaro);
+//        object3D.setScale(0.3, 0.3, 0.3);
+//        objects[0] = object3D;
 
-
-        Obj3D obj3D= new Obj3D(mContext, mTextureManager, R.raw.camaro_obj, R.drawable.camaro);
-        objects[0] = obj3D.getObject3D();
-
-        obj3D= new Obj3D(mContext, mTextureManager, R.raw.cube_obj, R.drawable.camaro);
-        objects[1] = obj3D.getObject3D();
-
-        obj3D= new Obj3D(mContext, mTextureManager, R.raw.superman_obj, R.drawable.superman);
-        objects[2] = obj3D.getObject3D();
+        Object3D object3D = loadModel(R.raw.deer_obj, R.drawable.deer);
+        object3D.setScale(0.05, 0.05, 0.05);
+        objects[0] = object3D;
+//
+//        Object3D object3D = loadModel(R.raw.superman_obj, R.drawable.superman);
+//        object3D.setScale(0.3, 0.3, 0.3);
+//        objects[0] = object3D;
 
         currentObj = objects[currentModel];
 
         currentObj.setPosition(0, 0, 0);
-        currentObj.setScale(0.3, 0.3, 0.3);
-
 
         getCurrentScene().addChild(currentObj);
 
@@ -73,7 +79,7 @@ public class MyRenderer extends RajawaliRenderer{
     public void onRender(final long elapsedTime, final double deltaTime) {
         super.onRender(elapsedTime, deltaTime);
         if (currentObj != null) {
-            currentObj.setRotation(rotationX, rotationY, rotationZ);
+            currentObj.setRotation(rotationX, rotationY, rotationZ - 70);
         }
     }
 
@@ -106,13 +112,42 @@ public class MyRenderer extends RajawaliRenderer{
         if (currentModel >= objects.length) {
             currentModel = 0;
             getCurrentScene().removeChild(objects[objects.length - 1]);
+            getCurrentScene().clearChildren();
         } else {
             getCurrentScene().removeChild(objects[currentModel - 1]);
         }
 
         currentObj = objects[currentModel];
         currentObj.setPosition(0, 0, 0);
-        currentObj.setScale(0.3, 0.3, 0.3);
         getCurrentScene().addChild(currentObj);
+    }
+
+    public Object3D loadModel(int objRaw, int texRaw) {
+
+        Object3D object3D = null;
+
+        LoaderOBJ parser = new LoaderOBJ(context.getResources(), mTextureManager, objRaw);
+        try {
+            parser.parse();
+            object3D = parser.getParsedObject();
+
+            if (texRaw != -1) {
+                Material material = new Material();
+                material.enableLighting(true);
+                material.setDiffuseMethod(new DiffuseMethod.Lambert());
+                material.setColor(0);
+
+                Texture tex = new Texture("name", texRaw);
+                material.addTexture(mTextureManager.addTexture(tex));
+                object3D.setMaterial(material);
+            }
+
+        } catch (ParsingException e) {
+            Log.w("Excetpion", "Parsing exception: " + e.toString());
+        } catch (ATexture.TextureException e2) {
+            Log.w("Excetpion", "TEXTURE ERROR: " + e2.toString());
+        }
+
+        return object3D;
     }
 }
