@@ -6,6 +6,7 @@ import android.graphics.PixelFormat;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
 import android.view.WindowManager;
 
@@ -82,9 +83,13 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private ArrayList<Point> fingerTips = new ArrayList<>();
     private Point cogPt;
 
-    int frameDetects = 0;
+    private int frameDetects = 0;
 
     private MyRenderer renderer;
+
+    private long lastObjChange = 0;
+
+    private int currentObjRot = 0;
 
     public HandDetector() {}
 
@@ -164,7 +169,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     public void onDestroy(){
         super.onDestroy();
+
         mOpenCvCameraView.disableView();
+        System.exit(0);
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -369,7 +376,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                 double length = Toolkit.distanceBetweenPoints(start, depth);
 
                 if (angle > -30 && angle < 160 && Math.abs(inAngle) > 20 && Math.abs(inAngle) < 120 && length > 0.1 * handSuspect.height) {
-                    if (start.y < cogPt.y) {
+                    if (start.y + handSuspect.tl().y < cogPt.y) {
                         fingerTips.add(start);
                     }
                 }
@@ -390,26 +397,49 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
         angle -= 10;
 
-        Log.d("BLABLA", "Angle: " + angle);
+        double avgDistance = Toolkit.getAvgDistanceBetweenPoints(fingerTips);
 
-        if (fingerTips.size() >= 3 && angle >= 30 && angle < 60) {
-            renderer.nextObj();
+        int area = handSuspect.width * handSuspect.height;
+
+        Log.d("AVGDis", "Avg: " + avgDistance + " Area: " + area);
+
+        if (area < 100000 && avgDistance > 28) {
+            currentObjRot += 8;
+        } else if (area > 120000 && area < 150000) {
+          currentObjRot += 8;
+        } else if (avgDistance > 35) {
+            currentObjRot += 8;
         }
 
-        renderer.rotateToY(mySensorListener.getY() * 10);
-        renderer.rotateToZ(mySensorListener.getX() * 10);
-        renderer.rotateToX(angle);
-
-//        renderer.setPos(cogPt.x / 2, cogPt.y / 2);
+        renderer.rotateToXYZ(angle + currentObjRot, mySensorListener.getY() * 10, mySensorListener.getX() * 10);
         setPosition(cogPt.x ,cogPt.y);
 
-        Core.circle(mRgba, cogPt, 3, CONTOUR_COLOR_GREEN, 3);
+        if (lastObjChange < System.currentTimeMillis() && fingerTips.size() >=3) {
+            int fingers = fingerTips.size();
+            int counterNext = 0;
+            int counterPrev = 0;
+            for (Point finger : fingerTips) {
+                if (finger.x  + handSuspect.tl().x > cogPt.x) {
+                    counterNext++;
+                } else if(finger.x + handSuspect.tl().x < cogPt.x){
+                    counterPrev++;
+                } else {
+                    break;
+                }
+            }
 
-
-        if (fingerTips.size() > 2) {
-//            cubeSize = Toolkit.distanceBetweenPoints(cogPt, avgFing);
-
+            if (counterNext == fingers && lastObjChange < System.currentTimeMillis() && angle >=25 && angle < 55) {
+                renderer.nextObj();
+                lastObjChange = System.currentTimeMillis() + 1000;
+                currentObjRot = 0;
+            } else if (counterPrev + 1 == fingers && lastObjChange < System.currentTimeMillis() && angle >= 330) {
+                renderer.prevObj();
+                lastObjChange = System.currentTimeMillis() + 1000;
+                currentObjRot = 0;
+            }
         }
+
+        Core.circle(mRgba, cogPt, 3, CONTOUR_COLOR_GREEN, 3);
     }
 
     private void setPosition(double x, double y) {

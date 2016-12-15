@@ -16,7 +16,6 @@ public class MenuActivity extends Activity {
 
     private Button startButton;
     private Button startWithDebugButton;
-    private Button debugOptionsButton;
     private Button exitButton;
 
     public static boolean normalRun;
@@ -34,7 +33,6 @@ public class MenuActivity extends Activity {
     private void init() {
         startButton = (Button) findViewById(R.id.startBtn);
         startWithDebugButton = (Button) findViewById(R.id.startDbgBtn);
-        debugOptionsButton = (Button) findViewById(R.id.debugOptionsBtn);
         exitButton = (Button) findViewById(R.id.exitBtn);
 
         if(sharedPreferences == null) {
@@ -55,13 +53,6 @@ public class MenuActivity extends Activity {
             @Override
             public void onClick(View view) {
                 runWithDebugOptions();
-            }
-        });
-
-        debugOptionsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                goToDebugOptions();
             }
         });
 

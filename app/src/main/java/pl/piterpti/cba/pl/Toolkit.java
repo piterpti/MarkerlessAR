@@ -65,4 +65,28 @@ public class Toolkit {
 
         return new Point(x, y);
     }
+
+    public static double getAvgDistanceBetweenPoints(ArrayList<Point> points) {
+
+        double totalDistance = 0;
+        if (points.size() > 3) {
+            for (int i = 0; i < points.size(); i++) {
+                double shortestDis = Integer.MAX_VALUE;
+                double tmpDis;
+                Point finger = points.get(i);
+                for (int x = 0; x < points.size(); x++) {
+                    if (x == i) {
+                        continue;
+                    }
+                    tmpDis = distanceBetweenPoints(finger, points.get(x));
+                    if (tmpDis < shortestDis) {
+                        shortestDis = tmpDis;
+                    }
+                }
+                totalDistance = shortestDis;
+            }
+        }
+
+        return totalDistance / points.size();
+    }
 }
