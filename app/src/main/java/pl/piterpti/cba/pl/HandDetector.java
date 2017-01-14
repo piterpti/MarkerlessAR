@@ -2,11 +2,15 @@ package pl.piterpti.cba.pl;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
 
 import org.opencv.android.BaseLoaderCallback;
@@ -14,7 +18,9 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
+import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
@@ -34,14 +40,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
-import java.util.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 
 
 /**
  * Created by Piter on 06/12/2016.
  */
-public class HandDetector extends Activity implements CvCameraViewListener2 {
+public class HandDetector extends Activity implements CvCameraViewListener2, View.OnTouchListener {
+
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("hh:mm:ss");
 
     /**
      * accelerometer data
@@ -84,6 +93,9 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     private int currentObjRot = 0;
 
     private Point prevPosition = null;
+
+    private boolean saveFrames = false;
+    private int savedFrameCount = 0;
 
     public HandDetector() {}
 
@@ -201,6 +213,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                         e.printStackTrace();
                     }
                     mOpenCvCameraView.enableView();
+                    mOpenCvCameraView.setOnTouchListener(HandDetector.this);
                 } break;
                 default:
                 {
@@ -242,6 +255,15 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             mThresheld = mThresheld.submat(handSuspect);
 
             Core.inRange(mThresheld, colorDetector.getlowerBound(), colorDetector.getUpperBound(), mThresheld);
+
+            if (saveFrames) {
+                Log.d("SAVING FRAME", "Save frames..");
+                saveFrames = false;
+                saveFrame(mRgba, savedFrameCount + "rgba" + sdf.format(new Date()));
+                saveFrame(mThresheld,savedFrameCount + "binary" + sdf.format(new Date()));
+                savedFrameCount++;
+            }
+
             Imgproc.morphologyEx(mThresheld, mThresheld, Imgproc.MORPH_OPEN, kernel);
             Imgproc.dilate(mThresheld, mThresheld, new Mat());
             MatOfPoint biggestContour = findBiggestContour(mThresheld);
@@ -289,6 +311,8 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             Log.d("Exception", e.toString());
         }
     }
+
+
 
     private MatOfPoint findBiggestContour(Mat img) {
 
@@ -427,5 +451,48 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
         renderer.setPos(obx, oby);
     }
 
+    private void saveFrame(Mat frame, String fileName) {
 
+        Bitmap bmp = null;
+        fileName += ".png";
+        try {
+            bmp = Bitmap.createBitmap(frame.cols(), frame.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(frame, bmp);
+        } catch (CvException e) {
+            Log.d("ERROR", e.toString());
+        }
+
+        FileOutputStream out = null;
+
+        File sd = new File(Environment.getExternalStorageDirectory() + "/frames");
+        boolean success = true;
+        if (!sd.exists()) {
+            success = sd.mkdir();
+        }
+
+        if (success) {
+            File dest = new File(sd, fileName);
+            try {
+                out = new FileOutputStream(dest);
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+            } catch (Exception e) {
+                Log.d("ERROR", e.toString());
+            } finally {
+                try {
+                    if (out != null) {
+                        out.close();
+                        Log.d("SAVING", "FRAME SAVED");
+                    }
+                } catch (IOException e) {}
+            }
+        }
+
+    }
+
+
+    @Override
+    public boolean onTouch(View view, MotionEvent motionEvent) {
+        //saveFrames = true; // - tylko do testow
+        return false;
+    }
 }
