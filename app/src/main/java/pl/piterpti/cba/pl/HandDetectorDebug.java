@@ -6,6 +6,7 @@ import android.graphics.PixelFormat;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
 import android.view.WindowManager;
 
@@ -41,7 +42,14 @@ import java.util.*;
 /**
  * Created by Piter on 06/12/2016.
  */
-public class HandDetector extends Activity implements CvCameraViewListener2 {
+public class HandDetectorDebug extends Activity implements CvCameraViewListener2 {
+
+    private static final String MAIN_LOG_TAG = "Main::LOG";
+
+    private static final Scalar CONTOUR_COLOR_GREEN = new Scalar(0, 255, 0, 255);
+    private static final Scalar CONTOUR_COLOR_RED = new Scalar(255, 0, 0, 255);
+    private static final Scalar CONTOUR_COLOR_BLUE = new Scalar(0, 0, 255, 255);
+    private static final Scalar CONTOUR_COLOR_YELLOW = new Scalar(255, 255, 0, 255);
 
     /**
      * accelerometer data
@@ -85,10 +93,11 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
     private Point prevPosition = null;
 
-    public HandDetector() {}
+    public HandDetectorDebug() {}
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.i(MAIN_LOG_TAG, "onCreate()");
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.camera_view);
@@ -156,7 +165,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
     public void onResume(){
         super.onResume();
         if(!OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_11, this, mLoaderCallback)) {
-
+            Log.i(MAIN_LOG_TAG, "Resume failed!");
         }
     }
 
@@ -173,6 +182,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             switch(status){
                 case LoaderCallbackInterface.SUCCESS:
                 {
+                    Log.i(MAIN_LOG_TAG, "OpenCV Loaded Successfully");
                     System.loadLibrary("detection_based_tracker");
 
                     try{
@@ -191,14 +201,17 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
 
                         mJavaDetector = new CascadeClassifier(mCascadeFile.getAbsolutePath());
                         if (mJavaDetector.empty()) {
+                            Log.e(MAIN_LOG_TAG, "Failed to load cascade classifier");
                             mJavaDetector = null;
                         } else {
+                            Log.i(MAIN_LOG_TAG, "Loaded cascade classifier from " + mCascadeFile.getAbsolutePath());
                             mJavaDetector.load(mCascadeFile.getAbsolutePath());
                         }
 
                         cascadeDir.delete();
                     }catch(IOException e){
                         e.printStackTrace();
+                        Log.i(MAIN_LOG_TAG, "Failed to load cascade. Exception thrown: " + e);
                     }
                     mOpenCvCameraView.enableView();
                 } break;
@@ -240,6 +253,7 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             getHsvOfPoint(Toolkit.getRectCenter(handSuspect));
 
             mThresheld = mThresheld.submat(handSuspect);
+            Core.rectangle(mRgba, handSuspect.tl(), handSuspect.br(), CONTOUR_COLOR_GREEN, 3);
 
             Core.inRange(mThresheld, colorDetector.getlowerBound(), colorDetector.getUpperBound(), mThresheld);
             Imgproc.morphologyEx(mThresheld, mThresheld, Imgproc.MORPH_OPEN, kernel);
@@ -249,6 +263,10 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             if (biggestContour != null) {
 
                 findFingerTips(biggestContour);
+
+                for (Point p : fingerTips) {
+                    Core.circle(mRgba, new Point(p.x + handSuspect.tl().x, p.y + handSuspect.tl().y), 3, CONTOUR_COLOR_BLUE, 3);
+                }
 
                 getDirection();
 
@@ -333,7 +351,15 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
             Log.d("Exception!!", e.toString());
         }
 
+        drawContour(contour);
         findFingers(contour);
+    }
+
+    private void drawContour(MatOfPoint contour) {
+        ArrayList<MatOfPoint> con = new ArrayList<>();
+        con.add(contour);
+        Imgproc.drawContours(mRgba, con, 0, CONTOUR_COLOR_RED, 5, 8, new Mat(), Integer.MAX_VALUE, handSuspect.tl());
+
     }
 
     private void findFingers(MatOfPoint contour) {
@@ -410,6 +436,8 @@ public class HandDetector extends Activity implements CvCameraViewListener2 {
                 currentObjRot = 0;
             }
         }
+
+        Core.circle(mRgba, cogPt, 3, CONTOUR_COLOR_GREEN, 3);
     }
 
     private void setPosition(double x, double y) {

@@ -18,8 +18,6 @@ public class MenuActivity extends Activity {
     private Button startWithDebugButton;
     private Button exitButton;
 
-    public static boolean normalRun;
-
     public static SharedPreferences sharedPreferences;
 
     @Override
@@ -65,25 +63,22 @@ public class MenuActivity extends Activity {
     }
 
     private void normalRun() {
-        normalRun = true;
-        Intent intent = createMainIntent();
+        Intent intent = createMainIntent(false);
         startActivity(intent);
     }
 
     private void runWithDebugOptions() {
-        Intent intent = createMainIntent();
-        normalRun = false;
-
-
+        Intent intent = createMainIntent(true);
         startActivity(intent);
     }
 
-    private void goToDebugOptions() {
-
-    }
-
-    private Intent createMainIntent() {
-        Intent intent = new Intent(this, HandDetector.class);
+    private Intent createMainIntent(boolean debug) {
+        Intent intent = null;
+        if (!debug) {
+            intent = new Intent(this, HandDetector.class);
+        } else {
+            intent = new Intent(this, HandDetectorDebug.class);
+        }
         return intent;
     }
 
